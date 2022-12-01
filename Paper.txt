@@ -1,0 +1,13 @@
+HASH TABLE
+Come funziona? Si tratta di un una tabella dinamica di ampiezza definita, che per semplicità chiameremo MM,
+al suo interno ogni riga è un vettore dinamico che possiede la chiave, ossia la finestra, e il content.
+Ogni riga della tabella è accessibile tramite un indicatore calcolato dalla funzione scope. Le finestre
+vengono messe all'interno della tabella in modo sequenziale: all'inizio la prima riga conterrà la prima
+finestra disponibile e così via. Il numero massimo di finestre che possono coesistere nello stesso momento
+è MM. Dopo che una finestra viene messa nell'ultima riga, quella successiva verrà messa come prima all'interno
+della tabella in maniera contigua, vi sono infatti due indicatori che tengono traccia: M tiene traccia della
+prima finestra attiva presente nella tabella ( il suo valore indica infatti il numero della cella ), mentre N
+tiene traccia dell'ultima casella inserita ( il suo valore indica il numero della cella libera più vicina );
+entrambi i valori una volta raggiunto MM ripartono da 0.
+
+
