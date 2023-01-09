@@ -20,7 +20,7 @@ When a window is put in the last row of the table, the next one will be put as f
         <li>c: it indicates the very first closure.</li></ul><br>
 Both of the values will start form zero once reached the maximum size of the table.
 
-### Main components
+## Main components
 <ul>
 <li>
 allocaBuffer(): it allocates the buffer that initially will be empty and the head will be NULL;
