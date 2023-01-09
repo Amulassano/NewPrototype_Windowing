@@ -1,13 +1,13 @@
 #ifndef ALLENAMENTO_ALTERAZIONEBUFFER_H
 #define ALLENAMENTO_ALTERAZIONEBUFFER_H
 
-#define MM 3
+#define MM 1000
 typedef struct List *list;
 typedef struct  node *link;
 
-typedef struct wind{
+typedef struct wind{ // [o,c)
     int o; //opening
-    int c; //closing
+    int c; //closing -> opened
 }window;
 
 typedef struct content{
