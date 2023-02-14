@@ -1,7 +1,14 @@
-#ifndef ALLENAMENTO_ALTERAZIONEBUFFER_H
-#define ALLENAMENTO_ALTERAZIONEBUFFER_H
+//
+// Created by alemu on 22/01/2023.
+//
 
-#define MM 1000
+#ifndef FINAL_ALTERAZIONEBUFFER_H
+#define FINAL_ALTERAZIONEBUFFER_H
+
+#define MM 100000
+#define String_Lenght 20
+#define Num_String 1
+
 typedef struct List *list;
 typedef struct  node *link;
 
@@ -11,7 +18,7 @@ typedef struct wind{ // [o,c)
 }window;
 
 typedef struct content{
-    int e;
+    char **e;
     int ts;
 }content;
 
@@ -33,7 +40,7 @@ list x;
 
 
 void allocaBuffer(int ts);
-void addToBuffer(int e, int ts, int l);
+void addToBuffer(char e[Num_String][String_Lenght], int ts, int l);
 
 
-#endif //ALLENAMENTO_ALTERAZIONEBUFFER_H
+#endif //FINAL_ALTERAZIONEBUFFER_H

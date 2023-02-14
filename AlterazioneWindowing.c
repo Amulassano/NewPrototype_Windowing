@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <math.h>
 #include "AlterazioneBuffer.h"
-#include <time.h>
-#define file "micro100-10000.txt"
 
 int slide = 5; //scelgo un slide per le finestre
-int width = 100; //scelgo una larghezza per le finestre
+int width = 50; //scelgo una larghezza per le finestre
 int tprev = 0; //previous time
-double tot = 0.0;
+
+typedef struct{ //Data interface type
+    char **e;
+    int ts;
+}data;
 
 link newNode( int o,int c){ // mi crea un nuovo nodo nella lista
     link p = malloc(sizeof *p);
@@ -24,6 +26,13 @@ void evictWindow(int ts,int l){ //elimina la finestra
     ff = fopen("evict.txt","a");
     fprintf(ff,"Evicting [ %d, %d ), ts= %d\n",x->head[l]->w.o,x->head[l]->w.c,ts);
     if (x->head[l]->nc>0) { //se è presente del content all'interno vado a liberare lo spazio allocatogli precedentemente
+        for (int i=0;i<x->head[l]->nc;i++) {
+            for (int f = 0; f < Num_String; f++)
+                free(x->head[l]->c[i].e[f]);
+            free(x->head[l]->c[i].e);
+        }
+
+        free(x->head[l]->c);
         x->head[l]->c=NULL;
         x->head[l]->nc=0;
     }
@@ -46,7 +55,7 @@ void TakeAllOff(int pos){
     x->head = malloc(MM*(sizeof (x->head)));
 }
 
-int chooseIfSkip(ts){
+int chooseIfSkip(int ts){
     int l = (int)ceil((double)(ts-x->c)/(double)slide);
     int last = giveMeLast();
     if (l-last<MM)
@@ -81,11 +90,11 @@ int scope(int ts){ //funzione scope, ritorna posizione esatta di dove inserire (
             //calcola le nuove finestre e le aggiunge a quelle già presenti
 
             if (x->N == 0) {
-                o = x->head[MM - 1]->w.o + width;
+                o = x->head[MM - 1]->w.o + slide;
                 i = 0;
             } else {
                 i = x->N;
-                o = x->head[x->N - 1]->w.o + width;
+                o = x->head[x->N - 1]->w.o + slide;
             }
             if (o <= ts) {
                 while (o <= ts) {
@@ -133,16 +142,14 @@ int tick(int tau, int ts){ //funzione tick: ritorna 1 ( ovvero TRUE ) se il time
     return 0;
 }
 
-void extractData(link h,int ***cont){ //mi estrae un vettore di content (e,ts)
-    int **p;
+void extractData(link h,data *cont){ //mi estrae un vettore di content (e,ts)
     if (h->nc!=0) {
-        p = malloc(h->nc * (sizeof(int *)));
         for (int i = 0; i < h->nc;i++){
-            p[i] = malloc(2*(sizeof (int)));
-            p[i][0] = h->c[i].e; //estraggo l'elemento
-            p[i][1] = h->c[i].ts; //estraggo il relativo timestamp
+            for (int l=0;l<Num_String;l++)
+                for (int t=0;t<String_Lenght;t++)
+                    cont[i].e[l][t] = h->c[i].e[l][t]; //estraggo l'elemento
+            cont[i].ts = h->c[i].ts; //estraggo il relativo timestamp
         }
-        *cont=p;
     }
     else
         return ;
@@ -160,145 +167,130 @@ int report(window w, int ts){ //report: window_close ( restituisce ( TRUE ) se t
     return 0;
 }
 
-void compute(link h, int **content){ //stampa il content
+void compute(link h, data *content){ //stampa il content
     FILE *fp;
     fp = fopen("log.txt","a");
     if (h->nc>0) { //se è presente del content
         fprintf(fp,"%d, %d, %d",tprev,h->w.o,h->w.c);
-        for (int i = 0; i < h->nc; i++)
-            fprintf(fp,", < %d, %d >", content[i][0], content[i][1]);
+
+        for (int i = 0; i < h->nc; i++) {
+            for (int l = 0; l < Num_String; l++) {
+                for (int p = 0; p < String_Lenght; p++) {
+                    if (l == 0 && p==0)
+                        fprintf(fp, ", < %c", content[i].e[l][p]);
+                    else
+                        fprintf(fp, "%c", content[i].e[l][p]);
+                }
+            }
+            fprintf(fp, ", %d >", content[i].ts);
+        }
         fprintf(fp,"\n");
     }
     fclose(fp);
 }
 
-void windowing(int e, int ts){
+void windowing(char e[Num_String][String_Lenght], int ts){
     int l;
-    FILE *f = fopen(file,"a");
 
-    double time_spent = 0.0;
-    double time_spent2 = 0.0;
-
-    fprintf(f,"ts = %d\n",ts);
-
-    clock_t beg;
-    clock_t dne;
-
-    clock_t begin = clock();
+    data *cont = NULL;
 
     allocaBuffer(ts); //alloco il buffer
 
-    clock_t end = clock();
-
-    // calcola il tempo trascorso trovando la differenza (end - begin) e
-    // dividendo la differenza per CLOCKS_PER_SEC per convertire in secondi
-    time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-
-    fprintf(f,"The allocaBuffer time is %f seconds\n", time_spent);
-
     if (ts>=tprev) {
-        time_spent=0.0;
-        begin = clock();
 
         l = scope(ts); //trovo l'indice della finestra in cui mettere il content
 
-        end = clock();
-        tot+= time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-        fprintf(f,"The scope time is %f seconds\n", time_spent);
-        time_spent=0.0;
-        begin = clock();
-
         addToBuffer(e, ts, l); //aggiungo il content
-        end = clock();
-        tot+= time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-        fprintf(f,"The addToBuffer time is %f seconds\n", time_spent);
-        time_spent=0.0;
-        begin = clock();
 
         if (tick(tprev, ts) && chooseIfSkip(ts)==1) {
-            end = clock();
-            tot+= time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-            fprintf(f,"The tick time is %f seconds\n", time_spent);
-            time_spent=0.0;
-            begin = clock();
             int k = x->N;
-            if (x->N >
-                x->M) { //due casi: N>M -> posso iterare nella tabella tranquillamente, N<M significa che la prima finestra ha sede in M e l'ultima in N e dunque per iterare la tabella servono due diversi cicli: il primo fino all'ampiezza massima e il secondo che parte da zero e arriva ad N
-
+            if (x->N > x->M) { //due casi: N>M -> posso iterare nella tabella tranquillamente, N<M significa che la prima finestra ha sede in M e l'ultima in N e dunque per iterare la tabella servono due diversi cicli: il primo fino all'ampiezza massima e il secondo che parte da zero e arriva ad N
                 for (int i = x->M; i < k; i++) {
                     if (active(x->head[i]->w, ts)) {
-                        int **cont;
-                        begin = clock();
-                        extractData(x->head[i], &cont);
-                        end = clock();
-                        tot+=time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-
+                        cont=malloc(x->head[i]->nc * (sizeof(data)));
+                        for (int l=0;l<x->head[i]->nc;l++) {
+                            cont[l].e = malloc(Num_String * (sizeof(char *)));
+                            for (int y = 0; y < Num_String; y++)
+                                cont[l].e[y] = malloc(String_Lenght * (sizeof(char)));
+                        }
+                        extractData(x->head[i], cont);
                         if (report(x->head[i]->w, ts)) {
                             compute(x->head[i], cont);
                         }
+                        for (int l=0;l<x->head[i]->nc;l++) {
+                            for (int y = 0; y < Num_String; y++)
+                                free(cont[l].e[y]);
+                            free(cont[l].e);
+                        }
+                        free(cont);
                     }
+
                 }
-                fprintf(f,"The extractData time is %f seconds\n", time_spent);
-                time_spent=0.0;
-                begin = clock();
                 for (int i = x->M; i < k; i++) {
                     if (x->head[i]->w.c <= ts) {
                         evictWindow(ts, i);
                     }
+                    else
+                        break;
                 }
-                end = clock();
-                tot+=time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-                fprintf(f,"The evictWindow time is %f seconds\n", time_spent);
             } else {
-
                 for (int i = x->M; i < MM; i++) { //primo ciclo
                     if (active(x->head[i]->w, ts)) {
-                        int **cont;
-                        begin = clock();
-                        extractData(x->head[i], &cont);
-                        end = clock();
-                        tot+=time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
+                        cont=malloc(x->head[i]->nc * (sizeof(data)));
+                        for (int l=0;l<x->head[i]->nc;l++) {
+                            cont[l].e = malloc(Num_String * (sizeof(char *)));
+                            for (int y = 0; y < Num_String; y++)
+                                cont[l].e[y] = malloc(String_Lenght * (sizeof(char)));
+                        }
+                        extractData(x->head[i], cont);
                         if (report(x->head[i]->w, ts)) {
                             compute(x->head[i], cont);
                         }
+                        for (int l=0;l<x->head[i]->nc;l++) {
+                            for (int y = 0; y < Num_String; y++)
+                                free(cont[l].e[y]);
+                            free(cont[l].e);
+                        }
+                        free(cont);
                     }
                 }
                 for (int i = x->M; i < MM; i++) {
                     if (x->head[i]->w.c <= ts) {
-                        beg = clock();
                         evictWindow(ts, i);
-                        dne = clock();
-                        tot+=time_spent2+= (double)(end - begin) / CLOCKS_PER_SEC;
-                    }
+                    } else
+                        break;
                 }
                 if (k != 0) { //secondo ciclo
                     for (int i = 0; i < k; i++) {
                         if (active(x->head[i]->w, ts)) {
-                            int **cont;
-                            begin = clock();
-                            extractData(x->head[i], &cont);
-                            end = clock();
-                            tot+=time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
+                            cont=malloc(x->head[i]->nc * (sizeof(data)));
+                            for (int l=0;l<x->head[i]->nc;l++) {
+                                cont[l].e = malloc(Num_String * (sizeof(char *)));
+                                for (int y = 0; y < Num_String; y++)
+                                    cont[l].e[y] = malloc(String_Lenght * (sizeof(char)));
+                            }
+                            extractData(x->head[i], cont);
                             if (report(x->head[i]->w, ts)) {
                                 compute(x->head[i], cont);
                             }
+                            for (int l=0;l<x->head[i]->nc;l++) {
+                                for (int y = 0; y < Num_String; y++)
+                                    free(cont[l].e[y]);
+                                free(cont[l].e);
+                            }
+                            free(cont);
                         }
                     }
-                    fprintf(f,"The extractData time is %f seconds\n", time_spent);
                     for (int i = 0; i < k; i++) {
                         if (x->head[i]->w.c <= ts) {
-                            beg = clock();
                             evictWindow(ts, i);
-                            dne = clock();
-                            tot+=time_spent2+= (double)(end - begin) / CLOCKS_PER_SEC;
                         }
+                        else
+                            break;
                     }
-                    fprintf(f,"The evictWindow time is %f seconds\n", time_spent2);
                 }
             }
         }
         tprev = ts;
     }
-    fprintf(f,"tot time: %f\n",tot);
-    fclose(f);
 }

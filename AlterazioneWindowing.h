@@ -1,10 +1,13 @@
 //
-// Created by alemu on 27/11/2022.
+// Created by alemu on 22/01/2023.
 //
 
-#ifndef ALLENAMENTO_ALTERAZIONEWINDOWING_H
-#define ALLENAMENTO_ALTERAZIONEWINDOWING_H
+#ifndef FINAL_ALTERAZIONEWINDOWING_H
+#define FINAL_ALTERAZIONEWINDOWING_H
 
-void windowing(int e, int ts);
+#include "AlterazioneBuffer.h"
 
-#endif //ALLENAMENTO_ALTERAZIONEWINDOWING_H
+void windowing(char e[Num_String][String_Lenght], int ts);
+
+
+#endif //FINAL_ALTERAZIONEWINDOWING_H
